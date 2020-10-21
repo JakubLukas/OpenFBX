@@ -22,8 +22,8 @@ static_assert(sizeof(u64) == 8, "u64 is not 8 bytes");
 static_assert(sizeof(i64) == 8, "i64 is not 8 bytes");
 
 
-using JobFunction = void (*)(void*);
-using JobProcessor = void (*)(JobFunction, void*, void*, u32, u32);
+using JobFunction = void (*)(void*, struct IAllocator&);
+using JobProcessor = void (*)(JobFunction, void*, void*, u32, u32, struct IAllocator&);
 
 enum class LoadFlags : u64 {
 	TRIANGULATE = 1 << 0,
@@ -534,7 +534,21 @@ protected:
 };
 
 
-IScene* load(const u8* data, int size, u64 flags, JobProcessor job_processor = nullptr, void* job_user_ptr = nullptr);
+struct IAllocator
+{
+	using allocFnType = void*(*)(void* userPtr, u32 size);
+	using deallocFnType = void(*)(void* userPtr, void* ptr);
+
+	void* allocate(u32 size) { return allocateFn(userPtr, size); }
+	void deallocate(void* ptr) { return deallocateFn(userPtr, ptr); }
+
+	void* userPtr = nullptr;
+	allocFnType allocateFn;
+	deallocFnType deallocateFn;
+};
+
+
+IScene* load(const u8* data, int size, u64 flags, IAllocator* allocator = nullptr, JobProcessor job_processor = nullptr, void* job_user_ptr = nullptr);
 const char* getError();
 double fbxTimeToSeconds(i64 value);
 i64 secondsToFbxTime(double value);
